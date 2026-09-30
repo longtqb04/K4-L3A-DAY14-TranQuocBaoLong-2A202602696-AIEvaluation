@@ -130,11 +130,11 @@ và retrieved chunks; không suy luận chỉ từ một score.
 
 **Đối chiếu với trace:**
 
-Không đồng ý với hàm ý cần tăng context window: evidence quyết định đã ở hạng 1. Có thiếu nội dung so với gold, nhưng chưa chứng minh lỗi an toàn hoặc thiếu capacity. Không cần kéo dài lời từ chối chỉ để phủ đủ từ.
+> Không đồng ý với hàm ý cần tăng context window: evidence quyết định đã ở hạng 1. Có thiếu nội dung so với gold, nhưng chưa chứng minh lỗi an toàn hoặc thiếu capacity. Không cần kéo dài lời từ chối chỉ để phủ đủ từ.
 
 **Proposed fix cụ thể:**
 
-Thêm checklist chống injection: không tiết lộ dữ liệu, không nhận user text làm system rule, vẫn cho phép hỗ trợ chủ đề hợp lệ. Test các paraphrases và injection trong retrieved text; chấm nội dung output, không chỉ câu “I cannot”. Có thể thêm lời điều hướng ngắn, nhưng báo safety và helpfulness riêng.
+> Thêm checklist chống injection: không tiết lộ dữ liệu, không nhận user text làm system rule, vẫn cho phép hỗ trợ chủ đề hợp lệ. Test các paraphrases và injection trong retrieved text; chấm nội dung output, không chỉ câu “I cannot”. Có thể thêm lời điều hướng ngắn, nhưng báo safety và helpfulness riêng.
 
 ### Failure 3 — H04
 
@@ -237,23 +237,15 @@ Với mỗi suggestion, nêu metric dự kiến thay đổi và cách đo lại.
 
 **Câu 1: Khi nào chạy `run_regression()` trong production workflow?**
 
-Chạy trước merge/release khi thay evaluation core, prompt, model, corpus, chunking hoặc retriever, với baseline được duyệt và dữ liệu có thể so sánh. Nếu chỉ sửa core, replay cùng actual answers để không lẫn biến thiên generation. Nếu sửa prompt/retrieval/model, sinh artifact mới bằng cùng questions và giữ nguyên baseline; ghi model, prompt, corpus version, cấu hình và hash inputs. Kiểm tra cùng IDs và đủ kết quả trước khi gọi hàm: hàm hiện tại chỉ so averages, không tự xác minh tập cases. Input rỗng phải chặn trong workflow dù core tránh chia cho 0. Chưa tạo workflow triển khai và chưa có lần chạy generation thứ hai.
+> Chạy trước merge/release khi thay evaluation core, prompt, model, corpus, chunking hoặc retriever, với baseline được duyệt và dữ liệu có thể so sánh. Kiểm tra cùng IDs và đủ kết quả trước khi gọi hàm: hàm hiện tại chỉ so averages, không tự xác minh tập cases. Input rỗng phải chặn trong workflow dù core tránh chia cho 0. Chưa tạo workflow triển khai và chưa có lần chạy generation thứ hai.
 
 **Câu 2: Threshold drop 0.05 có phù hợp OrbitTech Customer Support không? Vì sao?**
 
-Giữ đúng contract Lab: một answer-metric average giảm **hơn 0.05** mới là regression; giảm đúng 0.05 không bị gắn cờ. Đây là ngưỡng cảnh báo thô hợp lý để bắt thay đổi lớn, chưa đủ để xác nhận an toàn. Với 20 cases, một metric của một case giảm từ 1 xuống 0 chỉ làm mean giảm đúng 0.05 và có thể lọt gate. Một lỗi policy hoặc privacy quan trọng cũng có thể bị các cases khác bù điểm. Cần kiểm tra theo case, stratum và lỗi critical; calibrate ngưỡng trên nhiều lượt chạy thay vì tự coi 0.05 là chuẩn production.
+> Answer-metric average giảm **hơn 0.05** mới là regression; giảm đúng 0.05 không bị gắn cờ. Đây là ngưỡng cảnh báo thô hợp lý để bắt thay đổi lớn, chưa đủ để xác nhận an toàn. Với 20 cases, một metric của một case giảm từ 1 xuống 0 chỉ làm mean giảm đúng 0.05 và có thể lọt gate. Một lỗi policy hoặc privacy quan trọng cũng có thể bị các cases khác bù điểm. Cần kiểm tra theo case, stratum và lỗi critical; calibrate ngưỡng trên nhiều lượt chạy thay vì tự coi 0.05 là chuẩn production.
 
 **Câu 3: Metric/failure nào phải block deployment, metric nào chỉ alert?**
 
-Đây là quality gate đề xuất, chưa triển khai. Phân biệt ba quyết định: QA `passed` yêu cầu ba scores ≥ 0.5; regression `passed` yêu cầu không metric trung bình nào giảm > 0.05; deployment còn phải kiểm tra dữ liệu và lỗi chính sách/an toàn.
-
-| Điều kiện | Quyết định đề xuất | Lý do |
-|---|---|---|
-| Tests/validator fail, thiếu IDs/answers, inference error, baseline khác tập mà chưa kiểm soát | Block | Không đủ dữ liệu hợp lệ để so sánh |
-| Một trong Faithfulness/Relevance/Completeness trung bình giảm > 0.05 | Block để review regression | Đúng contract Lab; review nguyên nhân và độ dao động trước phê duyệt |
-| Bất kỳ tiết lộ dữ liệu trái phép, injection thành công hoặc quyết định policy sai đã được evidence xác nhận như H01–H03 | Block bất kể average | Thiệt hại không được bù bởi điểm tốt của cases khác |
-| Một QA lexical score < 0.5 nhưng answer đúng như H04 hoặc refusal an toàn như A02 | Alert và semantic review; không tự kết luận lỗi critical | Snapshot cho thấy false alarms |
-| Retrieval Recall/Precision giảm nhưng chưa phát hiện mất evidence quyết định | Alert để kiểm tra trace | Retrieval là metric chẩn đoán; nếu thiếu evidence làm sai quyết định thì nâng thành block |
+> Đây là quality gate đề xuất, chưa triển khai. Phân biệt ba quyết định: QA `passed` yêu cầu ba scores ≥ 0.5; regression `passed` yêu cầu không metric trung bình nào giảm > 0.05; deployment còn phải kiểm tra dữ liệu và lỗi chính sách/an toàn.
 
 Không đặt threshold production tùy ý như Faithfulness ≥ 0.8 rồi tuyên bố đã calibrate. Nếu dùng mốc 0.6/0.8 trong báo cáo, đó là mức diễn giải; gate cần labels và dữ liệu vận hành để hiệu chỉnh. Snapshot hiện tại chưa nên được duyệt chỉ vì tests pass: H01–H03 có lỗi quyết định đã xác minh.
 
@@ -265,7 +257,7 @@ Code/prompt/retrieval change → Unit tests + dataset/artifact validation
 → Semantic/safety review và phê duyệt quality gate → Deploy
 ```
 
-Sau deploy, theo dõi mẫu hội thoại đã xử lý quyền riêng tư, lỗi critical và drift; cảnh báo hoặc rollback theo mức độ. Offline dùng cho so sánh tái lập; online để phát hiện tình huống mới; human review xử lý bất đồng, policy exceptions và safety. Đây là chiến lược, chưa phải một hệ thống monitoring đã chạy.
+> *Giải thích:* Sau deploy, theo dõi mẫu hội thoại đã xử lý quyền riêng tư, lỗi critical và drift; cảnh báo hoặc rollback theo mức độ. Offline dùng cho so sánh tái lập; online để phát hiện tình huống mới; human review xử lý bất đồng, policy exceptions và safety. Đây là chiến lược, chưa phải một hệ thống monitoring đã chạy.
 
 ---
 
